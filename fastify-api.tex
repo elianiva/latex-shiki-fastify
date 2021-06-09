@@ -1,0 +1,531 @@
+% !TEX program = xelatex
+\documentclass[a4paper,14pt,titlepage]{article}
+
+% set font encoding to utf8
+\usepackage[utf8]{inputenc}
+
+% configure page margins
+\usepackage[
+left=1in,
+right=1in,
+top=1.5in,
+bottom=1.5in,
+]{geometry}%
+
+% shorthand for monospace font
+\def\c#1{\texttt{#1}}
+
+% minted setup, use vscode dark+ theme
+\usepackage{minted}
+\renewcommand{\MintedPygmentize}{node_modules/.bin/shiki-minted}
+\usemintedstyle{light-plus.json}
+
+% define Jetbrainsmono font for minted
+\usepackage{fontspec}
+\newfontfamily{\jetbrains}{JetBrainsMono Nerd Font}[NFSSFamily=JetBrainsFamily,Scale=0.85]
+\setminted{fontfamily=JetBrainsFamily,bgcolor=bg}
+
+% set page number style to fancy
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\rhead{\thepage}
+\cfoot{}
+
+% set title properties
+\title{
+  Creating a simple REST API using \textbf{\textit{Fastify}}\\[2ex]
+  \small this is just an excuse to experiment with {\LaTeX} and Shiki so
+  please, don't expect anything :p
+}
+\author{Dicha Zelianivan Arkana}
+\date{\today}
+
+\begin{document}
+
+\setlength{\parindent}{0pt}
+
+% bright grey background colour for shiki
+\definecolor{bg}{HTML}{f8f8f8}
+
+% create a dedicated page for the title
+\maketitle\newpage
+
+% create a dedicated page for the table of contents
+\renewcommand{\contentsname}{Table of Contents}
+\tableofcontents\newpage
+
+\section{Prerequisites}
+
+\begin{itemize}
+  \item Basic understanding of Javascript.
+  \item Text Editor.
+  \item Browser.
+\end{itemize}
+
+\section{Setup}
+\subsection{Project Folder}
+
+First thing first, let's create a simple project folder.
+
+\begin{minted}{sh}
+mkdir fastify-todo-api && cd $_ && npm init -y
+\end{minted}
+
+This will create a directory named \c{fastify-todo-api}, change the CWD
+to that folder, and initialise a fresh node project.
+
+\subsection{Package Installation}
+
+After setting up the project folder, we need to install the fastify package
+itself. Simply run this command to install it:
+
+\begin{minted}{sh}
+npm install fastify # 'npm i fastify' also works
+\end{minted}
+
+Open your preferred text editor and edit a file called
+\c{index.js} and import the fastify package.
+
+\begin{minted}{javascript}
+const fastify = require("fastify");
+\end{minted}
+
+Now, create a new app instance by invoking fastify. Let's set the
+\c{logger} to
+\c{true} to enable logging.
+
+\begin{minted}{javascript}
+const fastify = require("fastify");
+
+const app = fastify({ logger: true });
+\end{minted}
+
+After creating an app instance, we need to start the application and make it
+listen to port 3000. Of course you're free to pick which port to use.
+
+\begin{minted}{javascript}
+const fastify = require("fastify");
+
+const app = fastify({ logger: true });
+const PORT = 3000;
+
+(async () => {
+  try {
+    await app.listen(PORT);
+    console.log(`App is running on: http://localhost:${PORT}`);
+  } catch (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
+})();
+\end{minted}
+
+\newpage
+
+We can also use \mintinline{javascript}{.then} and
+\mintinline{javascript}{.catch} syntax as such:
+
+\begin{minted}{javascript}
+const fastify = require("fastify");
+
+const app = fastify({ logger: true });
+const PORT = 3000;
+
+app
+  .listen(PORT)
+  .then(() => {
+    console.log(`App is running on: http://localhost:${PORT}`)
+  })
+  .catch((err) => {
+    app.log.error(err);
+    process.exit(1);
+  });
+\end{minted}
+
+..but for now let's stick to async-await syntax.  To run this code,
+simply run \c{node index.js} and you should see an output similar to this
+on your terminal:
+
+\begin{minted}[breaklines]{sh}
+{"level":30,"time":1623233414708,"pid":172047,"hostname":"arch","msg":"Server listening at http://127.0.0.1:3000"}
+App is running on: http://localhost:3000
+\end{minted}
+
+\subsection{Automatic Refresh with Nodemon}
+
+To make the development process easier, we can also install \c{nodemon}.
+We can install it using \c{npm} just like any other package:
+
+\begin{minted}{sh}
+npm install --save-dev nodemon # 'npm i -D nodemon' also works
+\end{minted}
+
+We can then run \c{nodemon index.js} and it will get refreshed whenever
+the file is changed. The output when you run it should now look similar to this:
+
+\begin{minted}[breaklines]{sh}
+[nodemon] 2.0.7
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): *.*
+[nodemon] watching extensions: js,mjs,json
+[nodemon] starting `node index.js`
+{"level":30,"time":1623233491233,"pid":172559,"hostname":"arch","msg":"Server listening at http://127.0.0.1:3000"}
+App is running on: http://localhost:3000
+\end{minted}
+
+\newpage
+
+\subsection{\c{package.json} Scripts}
+
+Instead of keep running \c{node index.js} or \texttt{nodemon index.js}, we
+can create a script inside our \\ \c{package.json}.\\
+
+Open \c{package.json} and it should look something like this:
+
+\begin{minted}{json}
+{
+  "name": "fastify-todo-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fastify": "^3.17.0"
+  }
+}
+\end{minted}
+
+We need to edit the \c{"scripts"} section by removing the \texttt{"test"}
+script and adding \c{"start"} and \texttt{"dev"}. It should now look like
+this:
+
+\begin{minted}{jsonc}
+{
+  // ...rest of the file
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  // ...rest of the file
+}
+\end{minted}
+
+After adding those, we can now run \c{npm start} to use node or
+\c{npm run dev} to use nodemon.
+
+\newpage
+
+\section{Routes}
+
+Each routes has its own HTTP methods. There are several ways to define routes
+but let's use the sorthand that fastify has provided.
+
+\subsection{GET}
+\subsubsection{Hello World!}
+
+For our first route, let's make a GET route that simply says ``Hello World''.
+Place it before the app initialisation.
+
+\begin{minted}{javascript}
+const fastify = require("fastify");
+
+const app = fastify({ logger: true });
+const PORT = 3000;
+
+app.get("/", (_req, _reply) => {
+  return "Hello, World!";
+});
+
+(async () => {
+  try {
+    await app.listen(PORT);
+    console.log(`App is running on: http://localhost:${PORT}`);
+  } catch (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
+})();
+\end{minted}
+
+I prefixed the parameter name with underscore \c{\_} because it's not being
+used, of course you can omit them if they're not being used.\\
+
+We can try accessing this endpoint by running \c{curl} like so:
+
+\begin{minted}{sh}
+curl http://localhost:3000
+\end{minted}
+
+You'll see the output as \c{Hello World!} after running the command. Great!
+we've made our first route.
+
+\newpage
+
+\subsubsection{Getting All TODOs}
+
+Let's make an \mintinline{sh}{/api/todos} route to get all of
+our todos. I will remove the irrelevant code for the code snippet below, but
+as I said before, place the route \textit{before} the app initialisation.
+
+\begin{minted}{javascript}
+// we'll save our todos in this array, ideally we should save it in
+// a database but we'll do this for the sake of simplicity
+let todos = [
+  {
+    id: 1,
+    name: "Learn LaTeX",
+    isCompleted: false,
+  },
+  {
+    id: 2,
+    name: "Learn Rust",
+    isCompleted: false,
+  },
+];
+
+app.get("/api/todos", (_req, _reply) => {
+  return {
+    status: 200,
+    msg: "Successfully retrieved all todos.",
+    data: todos,
+  };
+});
+\end{minted}
+
+We can also try to access this endpoint using \c{curl}.
+
+\begin{minted}{sh}
+curl http://localhost:3000/api/todos
+\end{minted}
+
+The output would look something like this:
+
+\begin{minted}[breaklines]{json}
+{"status":200,"msg":"Successfully retrieved all todos.","data":[{"id":1,"name":"Learn LaTeX","isCompleted":false},{"id":2,"name":"Learn Rust","isCompleted":false}]}
+\end{minted}
+
+Not the prettiest output, but hey, it's the correct output! You can use tools like
+\c{jq} for example to make it prettier. Running the following command will
+give you an easier to read output.
+
+\begin{minted}{sh}
+curl -s http://localhost:3000/api/todos | jq
+\end{minted}
+
+\newpage
+
+Here's how the output from the previous command will look like:
+
+\begin{minted}{json}
+{
+  "status": 200,
+  "msg": "Successfully retrieved all todos.",
+  "data": [
+    {
+      "id": 1,
+      "name": "Learn LaTeX",
+      "isCompleted": false
+    },
+    {
+      "id": 2,
+      "name": "Learn Rust",
+      "isCompleted": false
+    }
+  ]
+}
+\end{minted}
+
+\subsubsection{Getting a Single TODO}
+
+We can also get a specific todo by creating an endpoint which will receive an
+ID and return a todo item with that specific ID. Don't forget to put this route
+\textbf{above} the previous route because otherwise this wouldn't work.
+
+\begin{minted}{javascript}
+app.get("/api/todos/:id", (req, _reply) => {
+  const { id } = req.params;
+  const todo = todos.filter(t => t.id === +id);
+  return {
+    status: 200,
+    msg: "Successfully retrieved a todo with an id of " + id,
+    data: todo,
+  };
+});
+\end{minted}
+
+Using a colon and giving it a name like \c{:id} will allow us to access
+the value of that URL. In this case, if we go to
+\c{http://localhost:3000/api/todos/1} then we'll have access to
+\c{req.params.id} which is going to be \texttt{1}.\\
+
+Since the value is going to be a \c{string}, when we compare it with the \c{id}
+of our todos using triple equal sign (called ``strict equal'') which means it also
+checks the data type, it will always return \c{false}. Here, we use
+\c{+id} to cast the datatype to \texttt{number}. We can also use
+\c{parseInt()} but using a plus symbol is shorter and looks nicer.
+
+\newpage
+
+\subsection{POST}
+\subsubsection{Creating TODO}
+
+We can get all of our todos but we can't create one, yet. Let's add a route to
+add a todo into our app.
+
+\begin{minted}{javascript}
+app.post("/api/todos", (req, _reply) => {
+  const { name } = req.body;
+
+  // generate a random ID and add the new todo to the list
+  const id = Math.floor(Math.random() * 100);
+  const item = { id, name, isCompleted: false };
+  todos.push(item);
+
+  return {
+    status: 201,
+    msg: "Successfully created a todo with an id of " + id,
+    data: [],
+  };
+});
+\end{minted}
+
+Here, we use a randomised number from 1 - 100. In a real world you'd use a
+better way like using \c{nanoid} or \c{uuid}, but for the sake of simplicity,
+we'll use this super simple method instead.\\
+
+To check if this endpoint is working, we can use this command to check if it
+works or not.
+
+\begin{minted}[breaklines]{sh}
+curl -X POST -H "Content-Type: application/json" -d '{"name": "stuff"}' -s http://localhost:3000/api/todos | jq
+\end{minted}
+
+The output is going to look like this:
+
+\begin{minted}{json}
+{
+  "status": 201,
+  "msg": "Successfully created a todo with an id of 36",
+  "data": []
+}
+\end{minted}
+
+You can omit piping it to \c{jq} if you don't need a pretty-formatted output.
+
+\newpage
+
+\subsection{PUT}
+\subsubsection{Updating TODO}
+
+If we want to update one of our TODOs, we'll need a route for a \c{PUT} method.
+Creating it is quite, the code is as follow.
+
+\begin{minted}{javascript}
+app.put("/api/todos/:id", (req, _reply) => {
+  const { id } = req.params;
+  const { name, isCompleted } = req.body;
+
+  // find the todo to modify
+  const old = todos.find(t => t.id === +id);
+
+  // create a new todo item with fallback value if no new value is provided
+  // it's using a nullish coalescing operator to check if the lhs value is
+  // null, then use the rhs value
+  const item = {
+    id: old.id,
+    name: name ?? old.name,
+    isCompleted: isCompleted ?? old.isCompleted,
+  };
+
+  // replace the old items with the new one with modified field(s)
+  todos = todos.filter(t => t.id !== +id).concat(item);
+
+  return {
+    status: 200,
+    msg: "Successfully updated a todo with an id of " + id,
+    data: [],
+  };
+});
+\end{minted}
+
+You can use this \c{curl} command to update one of our existing TODOs.
+
+\begin{minted}[breaklines]{sh}
+curl -X PUT -H "Content-Type: application/json" -d '{"name": "asdasdasdasd", "isCompleted": true}' -s localhost:3000/api/todos/1 | jq
+\end{minted}
+
+Here we update a TODO with an ID of 1, change its \c{name} to \c{asdasdasdasd},
+and \c{isCompleted} to \c{true}. The response from that command will look like
+this.
+
+\begin{minted}{json}
+{
+  "status": 200,
+  "msg": "Successfully updated a todo with an id of 1",
+  "data": []
+}
+\end{minted}
+
+\newpage
+
+\subsection{DELETE}
+\subsubsection{Deleting a TODO}
+
+To delete an item, we would need a route that accepts a \c{DELETE} request. It
+simply sets the \c{todos} array that we have before to a new array that doesn't
+have the targetted item. Here's how the code looks:
+
+\begin{minted}{javascript}
+app.delete("/api/todos/:id", (req, _reply) => {
+  const { id } = req.params;
+
+  // replace the old items *without* the deleted item
+  todos = todos.filter(t => t.id !== +id);
+
+  return {
+    status: 200,
+    msg: "Successfully deleted a todo with an id of " + id,
+    data: [],
+  };
+});
+\end{minted}
+
+Try deleting a TODO using \c{curl}, you can use this command to test it.
+
+\begin{minted}{sh}
+curl -X DELETE -s localhost:3000/api/todos/1 | jq
+\end{minted}
+
+The response would look like this:
+
+\begin{minted}{json}
+{
+  "status": 200,
+  "msg": "Successfully deleted a todo with an id of 1",
+  "data": []
+}
+\end{minted}
+
+\section{Error Handling}
+
+If you noticed, we haven't handle any edge cases that might cause an error. In
+a real world situation, you \textbf{\textit{should}} handle edge cases for your
+app. I'd leave it up to you to write since my initial intention to write this
+is just to try out {\LaTeX} and Shiki.\\
+
+You can find the original code inside \c{fastify-todo-api} directory in this
+repository.\\[4ex]
+
+\begingroup
+  \fontsize{18pt}{20pt}\selectfont
+  \begin{center}
+    \textbf{Good Luck! :)}
+  \end{center}
+\endgroup
+
+\end{document}
